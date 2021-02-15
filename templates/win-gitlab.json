@@ -1,0 +1,50 @@
+{
+    "variables": {
+      "aws_access_key": "",
+      "aws_secret_key": ""
+    },
+    "builders": [
+      {
+        "type": "amazon-ebs",
+        "access_key": "{{user `aws_access_key`}}",
+        "secret_key": "{{user `aws_secret_key`}}",
+        "region": "us-east-1",
+        "source_ami_filter": {
+          "filters": {
+            "virtualization-type": "hvm",
+            "name": "Windows_Server-1809-English-Core-ContainersLatest*",
+            "root-device-type": "ebs"
+          },
+          "owners": ["amazon"],
+          "most_recent": true
+        },
+        "instance_type": "t2.micro",
+        "communicator": "winrm",
+        "user_data_file": "setupWinRm.ps1",
+        "winrm_username": "Administrator",
+        "ami_name": "packer-gitlab-runner {{timestamp}}",
+        "winrm_use_ssl": true,
+        "winrm_insecure": true
+      }
+    ],
+    "provisioners": [
+    {
+      "type": "file",
+      "source": "..\\files\\configure-runner.ps1",
+      "destination": "c:\\gitlab-runner\\configure-runner.ps1"
+    },
+    {
+      "type": "powershell",
+      "inline": [
+        "Set-ExecutionPolicy Bypass -Force;",        
+        "iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'));",
+        "choco install python -y",
+        "choco install gitlab-runner -y;",
+        "gitlab-runner install --working-directory 'c:\\gitlab-runner\\' --config 'C:\\gitlab-runner\\config.toml'",
+        "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\InitializeInstance.ps1 -Schedule",
+        "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\SysprepInstance.ps1 -NoShutdown"
+      ]
+    }
+  ]
+}
+  
